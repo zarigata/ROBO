@@ -6,6 +6,10 @@
 export PROJECT_ROOT="/home/pi/ROBO/robot_project"
 export PYTHONPATH="${PROJECT_ROOT}"
 
+# Ensure logs directory exists and is writable
+mkdir -p "${PROJECT_ROOT}/logs"
+chmod 777 "${PROJECT_ROOT}/logs"
+
 # Install system dependencies
 sudo apt-get update
 sudo apt-get install -y \

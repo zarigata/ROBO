@@ -1,4 +1,6 @@
 import os
+import logging
+import sys
 
 class RobotConfig:
     # Hardware Configuration
@@ -8,6 +10,23 @@ class RobotConfig:
     # Paths
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     LOGS_DIR = os.path.join(BASE_DIR, 'logs')
+    
+    # Ensure logs directory exists with full permissions
+    os.makedirs(LOGS_DIR, exist_ok=True)
+    try:
+        os.chmod(LOGS_DIR, 0o777)
+    except Exception as e:
+        print(f"Warning: Could not set logs directory permissions: {e}")
+    
+    # Log file path
+    LOG_FILE_PATH = os.path.join(LOGS_DIR, 'robot_assistant.log')
+    
+    # Ensure log file exists and is writable
+    try:
+        with open(LOG_FILE_PATH, 'a') as f:
+            os.chmod(LOG_FILE_PATH, 0o666)
+    except Exception as e:
+        print(f"Warning: Could not set log file permissions: {e}")
     
     # Module Configurations
     MODULES = {
@@ -35,21 +54,25 @@ class RobotConfig:
             },
         },
         'handlers': {
-            'default': {
+            'console': {
                 'level': 'INFO',
                 'formatter': 'standard',
-                'class': 'logging.FileHandler',
-                'filename': os.path.join(LOGS_DIR, 'robot_assistant.log')
+                'class': 'logging.StreamHandler',
+                'stream': sys.stdout
             },
-            'console': {
-                'level': 'DEBUG',
+            'file': {
+                'level': 'INFO',
                 'formatter': 'standard',
-                'class': 'logging.StreamHandler'
+                'class': 'logging.handlers.RotatingFileHandler',
+                'filename': LOG_FILE_PATH,
+                'maxBytes': 10*1024*1024,  # 10 MB
+                'backupCount': 3,
+                'mode': 'a',
             }
         },
         'loggers': {
             '': {  # root logger
-                'handlers': ['default', 'console'],
+                'handlers': ['console', 'file'],
                 'level': 'INFO',
                 'propagate': True
             }

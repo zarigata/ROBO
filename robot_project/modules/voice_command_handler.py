@@ -30,13 +30,11 @@ class VoiceCommandHandler:
         for filename in os.listdir(self.commands_dir):
             if filename.endswith('.py') and not filename.startswith('__'):
                 try:
+                    # Convert filename to module name
                     module_name = f"voice_commands.{filename[:-3]}"
-                    spec = importlib.util.spec_from_file_location(
-                        module_name, 
-                        os.path.join(self.commands_dir, filename)
-                    )
-                    module = importlib.util.module_from_spec(spec)
-                    spec.loader.exec_module(module)
+                    
+                    # Import the module
+                    module = importlib.import_module(module_name)
                     
                     # Find and register command functions
                     for name, func in inspect.getmembers(module, inspect.isfunction):

@@ -18,7 +18,8 @@ class VisionModule:
             for device in range(3):  # Try devices 0, 1, 2
                 self.camera = cv2.VideoCapture(device)
                 if self.camera.isOpened():
-                    self.logger.info(f"Successfully opened camera on device {device}")
+                    # Only log if we want to show debug information
+                    # self.logger.debug(f"Successfully opened camera on device {device}")
                     break
             
             if not self.camera or not self.camera.isOpened():
@@ -27,8 +28,6 @@ class VisionModule:
             # Set camera properties
             self.camera.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
             self.camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-            
-            self.logger.info("Webcam initialized successfully")
         except Exception as e:
             self.logger.error(f"Camera initialization failed: {e}")
             raise
@@ -50,28 +49,27 @@ class VisionModule:
             
             return [{'type': 'face', 'count': len(faces)}]
         except Exception as e:
-            self.logger.warning(f"Object detection error: {e}")
+            self.logger.error(f"Object detection error: {e}")
             return []
     
     def run(self):
         """Main vision processing loop."""
         self.running = True
-        self.logger.info("Vision module started")
         
         while self.running:
             try:
                 # Capture frame
                 ret, frame = self.camera.read()
                 if not ret:
-                    self.logger.warning("Failed to capture frame")
+                    self.logger.error("Failed to capture frame")
                     time.sleep(1)
                     continue
                 
                 # Detect objects
                 objects = self.detect_objects(frame)
                 
-                # Log detected objects
-                if objects:
+                # Only log objects if there are any
+                if objects and objects[0]['count'] > 0:
                     self.logger.info(f"Detected objects: {objects}")
                 
                 time.sleep(0.1)  # Prevent high CPU usage
@@ -85,4 +83,3 @@ class VisionModule:
         self.running = False
         if self.camera:
             self.camera.release()
-        self.logger.info("Vision module stopped")

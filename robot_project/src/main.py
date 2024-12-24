@@ -1,5 +1,6 @@
 import logging
 import logging.config
+import logging.handlers
 import threading
 import time
 import sys
@@ -14,10 +15,52 @@ from modules.voice_module import VoiceModule
 from modules.motor_module import MotorModule
 from utils.error_handler import RobotErrorHandler
 
-class RobotAssistant:
-    def __init__(self):
+def setup_logging():
+    """
+    Safely set up logging with multiple fallback mechanisms
+    """
+    try:
+        # Ensure logs directory exists
+        os.makedirs(RobotConfig.LOGS_DIR, exist_ok=True)
+        
+        # Try to set directory and file permissions
+        try:
+            os.chmod(RobotConfig.LOGS_DIR, 0o777)
+        except Exception as e:
+            print(f"Warning: Could not set logs directory permissions: {e}")
+        
         # Configure logging
         logging.config.dictConfig(RobotConfig.LOGGING_CONFIG)
+        
+        # Additional fallback logging setup
+        root_logger = logging.getLogger()
+        
+        # Ensure console handler
+        if not any(isinstance(handler, logging.StreamHandler) for handler in root_logger.handlers):
+            console_handler = logging.StreamHandler(sys.stdout)
+            console_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s'))
+            root_logger.addHandler(console_handler)
+        
+        return True
+    except Exception as e:
+        # Absolute fallback logging
+        print(f"Critical error setting up logging: {e}")
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+            handlers=[
+                logging.StreamHandler(sys.stdout),
+                logging.FileHandler('/tmp/robot_assistant_fallback.log', mode='a')
+            ]
+        )
+        return False
+
+class RobotAssistant:
+    def __init__(self):
+        # Set up logging first
+        logging_setup_success = setup_logging()
+        
+        # If logging setup failed, we'll use a basic logger
         self.logger = logging.getLogger(__name__)
         
         # Error handler

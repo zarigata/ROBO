@@ -1,12 +1,21 @@
 import logging
 import time
 import os
+import importlib
 
+# Global variable to track speech recognition availability
+SPEECH_RECOGNITION_AVAILABLE = False
+sr = None
+
+# Attempt to import speech recognition
 try:
-    import speech_recognition as sr
+    import speech_recognition
+    sr = speech_recognition
+    SPEECH_RECOGNITION_AVAILABLE = True
 except ImportError:
-    sr = None
-    print("Warning: speech_recognition module not available")
+    logging.warning("Speech recognition module not available")
+except Exception as e:
+    logging.error(f"Unexpected error importing speech recognition: {e}")
 
 from config.config import RobotConfig
 from modules.voice_command_handler import VoiceCommandHandler
@@ -23,21 +32,22 @@ class VoiceModule:
         self.commands_dir = os.path.join(project_root, 'voice_commands')
         self.command_handler = VoiceCommandHandler(self.commands_dir)
         
-        # Initialize only if speech recognition is available
-        if sr:
+        # Initialize speech recognition if available
+        if SPEECH_RECOGNITION_AVAILABLE and sr is not None:
             try:
                 self.recognizer = sr.Recognizer()
                 self.microphone = sr.Microphone()
             except Exception as e:
-                self.logger.error(f"Voice module initialization failed: {e}")
-                sr = None
+                self.logger.error(f"Speech recognition initialization failed: {e}")
+                global SPEECH_RECOGNITION_AVAILABLE
+                SPEECH_RECOGNITION_AVAILABLE = False
     
     def process_voice_command(self, audio):
         """
         Process and interpret voice commands.
         """
-        if not sr:
-            self.logger.warning("Speech recognition not available")
+        if not SPEECH_RECOGNITION_AVAILABLE:
+            self.logger.error("Speech recognition module not available")
             return None
         
         try:
@@ -57,12 +67,14 @@ class VoiceModule:
             self.logger.warning("Could not understand audio")
         except sr.RequestError as e:
             self.logger.error(f"Could not request results; {e}")
+        except Exception as e:
+            self.logger.error(f"Unexpected error in voice processing: {e}")
         return None
     
     def run(self):
         """Main voice recognition loop."""
-        if not sr:
-            self.logger.warning("Cannot start voice module - speech recognition not available")
+        if not SPEECH_RECOGNITION_AVAILABLE:
+            self.logger.error("Cannot start voice module - speech recognition not available")
             return
         
         self.running = True
