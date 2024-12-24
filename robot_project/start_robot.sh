@@ -1,16 +1,31 @@
 #!/bin/bash
 
-# Robot Startup Script
+# Robot Assistant Startup Script
 
-# Set up virtual environment
-python3 -m venv robot_env
-source robot_env/bin/activate
+# Set environment
+export PROJECT_ROOT="/home/pi/ROBO/robot_project"
+export PYTHONPATH="${PROJECT_ROOT}"
 
-# Install dependencies
-pip install -r requirements.txt
+# Install system dependencies
+sudo apt-get update
+sudo apt-get install -y \
+    python3-pyaudio \
+    portaudio19-dev
 
-# Start the robot main script
-python src/main.py
+# Activate virtual environment
+source "${PROJECT_ROOT}/venv/bin/activate"
 
-# Optional: Keep terminal open for debugging
-read -p "Press enter to exit"
+# Upgrade pip
+pip install --upgrade pip
+
+# Install project dependencies
+pip install --no-warn-script-location \
+    numpy \
+    opencv-python \
+    SpeechRecognition \
+    pyserial \
+    RPi.GPIO \
+    python-json-logger
+
+# Start the robot assistant
+python "${PROJECT_ROOT}/src/main.py"

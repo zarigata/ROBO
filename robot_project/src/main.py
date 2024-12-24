@@ -1,77 +1,88 @@
 import logging
+import logging.config
+import threading
+import time
 import sys
 import os
 
 # Add project root to Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.movement import RobotMovement
-from src.object_detection import ObjectDetector
-from src.voice_command import VoiceCommandProcessor
-from src.navigation import NavigationSystem
+from config.config import RobotConfig
+from modules.vision_module import VisionModule
+from modules.voice_module import VoiceModule
+from modules.motor_module import MotorModule
+from utils.error_handler import RobotErrorHandler
 
-# Configure logging
-logging.basicConfig(
-    filename='../logs/robot.log', 
-    level=logging.INFO, 
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger('RobotMain')
-
-class HomeRobot:
+class RobotAssistant:
     def __init__(self):
-        try:
-            self.movement = RobotMovement()
-            self.object_detector = ObjectDetector()
-            self.voice_processor = VoiceCommandProcessor()
-            self.navigation = NavigationSystem()
-            
-            logger.info("Robot systems initialized successfully")
-        except Exception as e:
-            logger.error(f"Initialization error: {e}")
-            raise
-
-    def run(self):
+        # Configure logging
+        logging.config.dictConfig(RobotConfig.LOGGING_CONFIG)
+        self.logger = logging.getLogger(__name__)
+        
+        # Error handler
+        self.error_handler = RobotErrorHandler()
+        
+        # Initialize modules
+        self.modules = {}
+        self._initialize_modules()
+        
+    def _initialize_modules(self):
+        """Initialize all robot modules with error handling."""
+        module_classes = {
+            'vision': VisionModule,
+            'voice': VoiceModule,
+            'motor_control': MotorModule
+        }
+        
+        for module_name, module_class in module_classes.items():
+            try:
+                if RobotConfig.MODULES.get(module_name, {}).get('enabled', False):
+                    self.modules[module_name] = module_class()
+                    self.logger.info(f"Initialized {module_name} module successfully")
+            except Exception as e:
+                self.logger.error(f"Failed to initialize {module_name} module: {e}")
+                self.error_handler.handle_module_error(module_name, e)
+    
+    def start(self):
+        """Start the robot assistant with module threads."""
+        self.logger.info("Starting Robot Assistant")
+        
+        # Create threads for each module
+        module_threads = []
+        for module_name, module in self.modules.items():
+            thread = threading.Thread(
+                target=module.run, 
+                name=f"{module_name}_thread",
+                daemon=True
+            )
+            thread.start()
+            module_threads.append(thread)
+        
+        # Main monitoring loop
         try:
             while True:
-                # Listen for voice commands
-                command = self.voice_processor.listen()
+                # Check module health
+                for thread in module_threads:
+                    if not thread.is_alive():
+                        self.logger.warning(f"Module {thread.name} has stopped unexpectedly")
+                        self.error_handler.handle_thread_failure(thread.name)
                 
-                if command:
-                    self.process_command(command)
-                
-                # Continuous object detection
-                detected_objects = self.object_detector.detect_objects()
-                if detected_objects:
-                    self.handle_object_detection(detected_objects)
+                time.sleep(5)  # Check every 5 seconds
         
         except KeyboardInterrupt:
-            logger.info("Robot shutdown initiated")
+            self.logger.info("Robot Assistant shutting down")
         except Exception as e:
-            logger.error(f"Runtime error: {e}")
-
-    def process_command(self, command):
-        logger.info(f"Processing command: {command}")
-        
-        if "move forward" in command:
-            self.movement.forward()
-        elif "move backward" in command:
-            self.movement.backward()
-        elif "turn left" in command:
-            self.movement.turn_left()
-        elif "turn right" in command:
-            self.movement.turn_right()
-        elif "stop" in command:
-            self.movement.stop()
-
-    def handle_object_detection(self, objects):
-        logger.info(f"Objects detected: {objects}")
-        # Implement object avoidance or interaction logic
-        self.navigation.avoid_obstacles(objects)
+            self.logger.critical(f"Unexpected error in main loop: {e}")
+            self.error_handler.handle_critical_error(e)
+        finally:
+            # Graceful shutdown
+            for module_name, module in self.modules.items():
+                module.stop()
 
 def main():
-    robot = HomeRobot()
-    robot.run()
+    robot = RobotAssistant()
+    robot.start()
 
 if __name__ == "__main__":
     main()
