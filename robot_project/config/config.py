@@ -11,22 +11,27 @@ class RobotConfig:
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     LOGS_DIR = os.path.join(BASE_DIR, 'logs')
     
-    # Ensure logs directory exists with full permissions
+    # Ensure logs directory exists
     os.makedirs(LOGS_DIR, exist_ok=True)
-    try:
-        os.chmod(LOGS_DIR, 0o777)
-    except Exception as e:
-        print(f"Warning: Could not set logs directory permissions: {e}")
     
-    # Log file path
-    LOG_FILE_PATH = os.path.join(LOGS_DIR, 'robot_assistant.log')
+    # Fallback log file path
+    FALLBACK_LOG_PATH = '/tmp/robot_assistant.log'
     
-    # Ensure log file exists and is writable
+    # Determine log file path with permission checks
+    LOG_FILE_PATH = FALLBACK_LOG_PATH
     try:
-        with open(LOG_FILE_PATH, 'a') as f:
-            os.chmod(LOG_FILE_PATH, 0o666)
+        # Try to use project logs directory first
+        project_log_path = os.path.join(LOGS_DIR, 'robot_assistant.log')
+        
+        # Check if we can write to the project log directory
+        if os.access(LOGS_DIR, os.W_OK):
+            # Try to create and write to the log file
+            with open(project_log_path, 'a') as f:
+                os.chmod(project_log_path, 0o666)
+            LOG_FILE_PATH = project_log_path
     except Exception as e:
-        print(f"Warning: Could not set log file permissions: {e}")
+        print(f"Warning: Could not use project log path. Falling back to {FALLBACK_LOG_PATH}")
+        print(f"Log path error details: {e}")
     
     # Module Configurations
     MODULES = {
