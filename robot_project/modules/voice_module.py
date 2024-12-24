@@ -4,8 +4,8 @@ import os
 import importlib
 
 # Global variable to track speech recognition availability
-SPEECH_RECOGNITION_AVAILABLE = False
 sr = None
+SPEECH_RECOGNITION_AVAILABLE = False
 
 # Attempt to import speech recognition
 try:
@@ -22,6 +22,7 @@ from modules.voice_command_handler import VoiceCommandHandler
 
 class VoiceModule:
     def __init__(self):
+        global SPEECH_RECOGNITION_AVAILABLE
         self.logger = logging.getLogger(__name__)
         self.recognizer = None
         self.microphone = None
@@ -39,13 +40,13 @@ class VoiceModule:
                 self.microphone = sr.Microphone()
             except Exception as e:
                 self.logger.error(f"Speech recognition initialization failed: {e}")
-                global SPEECH_RECOGNITION_AVAILABLE
                 SPEECH_RECOGNITION_AVAILABLE = False
     
     def process_voice_command(self, audio):
         """
         Process and interpret voice commands.
         """
+        global SPEECH_RECOGNITION_AVAILABLE
         if not SPEECH_RECOGNITION_AVAILABLE:
             self.logger.error("Speech recognition module not available")
             return None
@@ -73,6 +74,7 @@ class VoiceModule:
     
     def run(self):
         """Main voice recognition loop."""
+        global SPEECH_RECOGNITION_AVAILABLE
         if not SPEECH_RECOGNITION_AVAILABLE:
             self.logger.error("Cannot start voice module - speech recognition not available")
             return
