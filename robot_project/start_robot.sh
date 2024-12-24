@@ -2,34 +2,37 @@
 
 # Robot Assistant Startup Script
 
+# Project root directory
+PROJECT_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Activate virtual environment
+source "${PROJECT_ROOT}/venv/bin/activate"
+
 # Set environment
-export PROJECT_ROOT="/home/pi/ROBO/robot_project"
-export PYTHONPATH="${PROJECT_ROOT}"
+export PYTHONPATH="${PROJECT_ROOT}:$PYTHONPATH"
 
 # Ensure logs directory exists and is writable
 mkdir -p "${PROJECT_ROOT}/logs"
 chmod 777 "${PROJECT_ROOT}/logs"
 
-# Install system dependencies
+# Ensure required system packages are installed
 sudo apt-get update
 sudo apt-get install -y \
     python3-pyaudio \
-    portaudio19-dev
+    portaudio19-dev \
+    alsa-utils \
+    jackd2 \
+    pulseaudio \
+    flac
 
-# Activate virtual environment
-source "${PROJECT_ROOT}/venv/bin/activate"
-
-# Upgrade pip
-pip install --upgrade pip
-
-# Install project dependencies
-pip install --no-warn-script-location \
+# Install or upgrade Python dependencies
+pip install --upgrade \
+    SpeechRecognition \
+    pyaudio \
     numpy \
     opencv-python \
-    SpeechRecognition \
-    pyserial \
     RPi.GPIO \
     python-json-logger
 
-# Start the robot assistant
+# Run the robot assistant
 python "${PROJECT_ROOT}/src/main.py"

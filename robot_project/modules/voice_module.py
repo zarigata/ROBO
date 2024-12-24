@@ -2,10 +2,20 @@ import logging
 import time
 import os
 import importlib
+import subprocess
 
 # Global variable to track speech recognition availability
 sr = None
 SPEECH_RECOGNITION_AVAILABLE = False
+
+# Attempt to install FLAC if not available
+try:
+    subprocess.run(["which", "flac"], check=True)
+except subprocess.CalledProcessError:
+    try:
+        subprocess.run(["sudo", "apt-get", "install", "-y", "flac"], check=True)
+    except subprocess.CalledProcessError:
+        logging.warning("Could not install FLAC command line tool")
 
 # Attempt to import speech recognition
 try:
@@ -36,11 +46,48 @@ class VoiceModule:
         # Initialize speech recognition if available
         if SPEECH_RECOGNITION_AVAILABLE and sr is not None:
             try:
+                # Configure ALSA for audio input
+                self._configure_alsa()
+                
+                # Initialize recognizer and microphone
                 self.recognizer = sr.Recognizer()
                 self.microphone = sr.Microphone()
+                
+                # Adjust for ambient noise
+                with self.microphone as source:
+                    self.recognizer.adjust_for_ambient_noise(source, duration=1)
             except Exception as e:
                 self.logger.error(f"Speech recognition initialization failed: {e}")
                 SPEECH_RECOGNITION_AVAILABLE = False
+    
+    def _configure_alsa(self):
+        """
+        Configure ALSA for better audio input handling
+        """
+        try:
+            # Create or update ALSA configuration
+            alsa_config_path = os.path.expanduser('~/.asoundrc')
+            alsa_config = """
+# Default ALSA configuration for robot voice input
+pcm.!default {
+    type asym
+    playback.pcm {
+        type plug
+        slave.pcm "hw:0,0"
+    }
+    capture.pcm {
+        type plug
+        slave.pcm "hw:0,0"
+    }
+}
+"""
+            with open(alsa_config_path, 'w') as f:
+                f.write(alsa_config)
+            
+            # Reload ALSA
+            subprocess.run(["alsactl", "restore"], check=False)
+        except Exception as e:
+            self.logger.warning(f"Could not configure ALSA: {e}")
     
     def process_voice_command(self, audio):
         """
@@ -80,11 +127,6 @@ class VoiceModule:
             return
         
         self.running = True
-        self.logger.info("Voice module started")
-        
-        with self.microphone as source:
-            # Adjust for ambient noise
-            self.recognizer.adjust_for_ambient_noise(source)
         
         while self.running:
             try:
@@ -104,7 +146,6 @@ class VoiceModule:
     def stop(self):
         """Stop the voice module."""
         self.running = False
-        self.logger.info("Voice module stopped")
     
     def reload_commands(self):
         """
