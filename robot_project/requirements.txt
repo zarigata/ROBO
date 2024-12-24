@@ -1,0 +1,25 @@
+# Core Python Libraries
+numpy==1.21.6
+opencv-python-headless==4.5.5.64
+
+# Voice Recognition
+SpeechRecognition==3.8.1
+pyaudio==0.2.11
+
+# Lightweight Object Detection
+ultralytics==8.0.43  # Lightweight YOLO implementation
+torch==1.10.2
+torchvision==0.11.3
+
+# Motor Control
+RPi.GPIO==0.7.1
+
+# Add ESP Communication Dependencies
+pyserial==3.5
+
+# Logging and Monitoring
+python-json-logger==2.0.2
+
+# Optional: Web Interface or Remote Monitoring
+flask==2.0.2
+requests==2.26.0

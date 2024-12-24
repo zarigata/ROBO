@@ -1,0 +1,9 @@
+{
+    "move_forward": ["go forward", "move ahead", "walk forward"],
+    "move_backward": ["go back", "move backward", "walk backward"],
+    "turn_left": ["turn left", "rotate left"],
+    "turn_right": ["turn right", "rotate right"],
+    "stop": ["stop", "halt", "pause"],
+    "detect_objects": ["what do you see", "scan environment", "detect objects"],
+    "report_status": ["how are you", "status check", "system report"]
+}
