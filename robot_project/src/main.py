@@ -68,6 +68,7 @@ class RobotAssistant:
         
         # Initialize modules
         self.modules = {}
+        self.module_threads = {}
         self._initialize_modules()
         
     def _initialize_modules(self):
@@ -81,35 +82,52 @@ class RobotAssistant:
         for module_name, module_class in module_classes.items():
             try:
                 if RobotConfig.MODULES.get(module_name, {}).get('enabled', False):
-                    self.modules[module_name] = module_class()
+                    module_instance = module_class()
+                    self.modules[module_name] = module_instance
                     self.logger.info(f"Initialized {module_name} module successfully")
             except Exception as e:
                 self.logger.error(f"Failed to initialize {module_name} module: {e}")
                 self.error_handler.handle_module_error(module_name, e)
     
-    def start(self):
-        """Start the robot assistant with module threads."""
-        self.logger.info("Starting Robot Assistant")
-        
-        # Create threads for each module
-        module_threads = []
-        for module_name, module in self.modules.items():
+    def _start_module_thread(self, module_name, module):
+        """Start a module in a separate thread."""
+        try:
             thread = threading.Thread(
                 target=module.run, 
                 name=f"{module_name}_thread",
                 daemon=True
             )
             thread.start()
-            module_threads.append(thread)
+            self.module_threads[module_name] = thread
+            return thread
+        except Exception as e:
+            self.logger.error(f"Failed to start thread for {module_name}: {e}")
+            self.error_handler.handle_thread_failure(f"{module_name}_thread")
+            return None
+    
+    def start(self):
+        """Start the robot assistant with module threads."""
+        self.logger.info("Starting Robot Assistant")
+        
+        # Start module threads
+        for module_name, module in self.modules.items():
+            self._start_module_thread(module_name, module)
         
         # Main monitoring loop
         try:
             while True:
                 # Check module health
-                for thread in module_threads:
+                for module_name, thread in list(self.module_threads.items()):
                     if not thread.is_alive():
-                        self.logger.warning(f"Module {thread.name} has stopped unexpectedly")
+                        self.logger.warning(f"Module {module_name} thread has stopped unexpectedly")
                         self.error_handler.handle_thread_failure(thread.name)
+                        
+                        # Attempt to restart the module
+                        module = self.modules.get(module_name)
+                        if module:
+                            new_thread = self._start_module_thread(module_name, module)
+                            if new_thread:
+                                self.module_threads[module_name] = new_thread
                 
                 time.sleep(5)  # Check every 5 seconds
         
@@ -121,7 +139,10 @@ class RobotAssistant:
         finally:
             # Graceful shutdown
             for module_name, module in self.modules.items():
-                module.stop()
+                try:
+                    module.stop()
+                except Exception as e:
+                    self.logger.error(f"Error stopping {module_name} module: {e}")
 
 def main():
     robot = RobotAssistant()
